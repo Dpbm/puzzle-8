@@ -4,6 +4,7 @@ version = "0.1.0"
 description = "sudoku AI"
 requires-python = ">=3.12"
 dependencies = [
+    "alive-progress>=3.2.0",
     "matplotlib>=3.10.3",
     "numpy>=2.2.6",
 ]
