@@ -3,7 +3,7 @@ from math import sqrt
 from typing import List, Tuple
 import numpy as np
 
-from constants import MIN_VALUE_PER_CELL, MAX_RANDOM_PER_ROW, MAX_VALUE_PER_CELL
+from constants import MIN_VALUE_PER_CELL, MAX_RANDOM_PER_ROW, MAX_VALUE_PER_CELL,DEFAULT_BOARD_SIZE
 
 Row = np.array
 Column = np.array
@@ -12,7 +12,7 @@ BoardData = np.array
 Coordinates = Tuple[int, int]
 
 class Board:
-    def __init__(self, n:int=9):
+    def __init__(self, n:int=DEFAULT_BOARD_SIZE):
         self._n = n
         self._side = sqrt(self._n)
         self._board = np.zeros(shape=(self._n, self._n), dtype=np.uint8)
