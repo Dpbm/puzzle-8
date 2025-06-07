@@ -1,25 +1,58 @@
+"""Main file for sudoku agent"""
+
 import argparse
 import sys
 from alive_progress import alive_it
-import matplotlib.pyplot as plt
 
+from constants import (
+    DEFAULT_GENERATIONS,
+    DEFAULT_POPULATION_SIZE,
+    DEFAULT_OUTPUT_IMAGE,
+    DEFAULT_CROSSOVER_RATE,
+    DEFAULT_MUTATION_RATE, DEFAULT_K, DEFAULT_NUMBER_OF_PARENTS, DEFAULT_IMMIGRANT_RATE
+)
 from game.board import Board
 from genetic.population import Population
+from genetic.chromosome import crossover
+
+def get_args() -> argparse.Namespace:
+    """
+    Parse CLI arguments.
+
+    :return: argparse.Namespace
+    """
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--population", type=int, default=DEFAULT_POPULATION_SIZE)
+    parser.add_argument("--generations", type=int, default=DEFAULT_GENERATIONS)
+    parser.add_argument("--out-image", type=str, default=DEFAULT_OUTPUT_IMAGE)
+    parser.add_argument("--cross-rate", type=float, default=DEFAULT_CROSSOVER_RATE)
+    parser.add_argument("--mut-rate", type=float, default=DEFAULT_MUTATION_RATE)
+    parser.add_argument("-k", type=int, default=DEFAULT_K)
+    parser.add_argument("--parents", type=int, default=DEFAULT_NUMBER_OF_PARENTS)
+    parser.add_argument("--immigration", type=float, default=DEFAULT_IMMIGRANT_RATE)
+    return parser.parse_args(sys.argv[1:])
+
 
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser()
-    parser.add_argument("--population", type=int)
-    parser.add_argument("--generations", type=int)
-    parser.add_argument("--out-image", type=str)
-    args = parser.parse_args(sys.argv[1:])
 
-    pop_size = args.population or 1000
-    max_generations = args.generations or 1000
-    output_image = args.out_image or "result.png"
+    args = get_args()
+    pop_size = args.population
+    max_generations = args.generations
+    output_image = args.out_image
+    crossover_rate = args.cross_rate
+    mutation_rate = args.mut_rate
+    k = args.k
+    number_of_parents = args.parents
+    immigration_rate = args.immigration
 
     print("Using:")
     print(f"Population size: {pop_size}")
     print(f"Max generations: {max_generations}")
+    print(f"Crossover rate: {crossover_rate}")
+    print(f"Mutation rate: {mutation_rate}")
+    print(f"K: {k}")
+    print(f"Number of parents: {number_of_parents}")
+    print(f"Immigration rate: {immigration_rate}")
     print(f"Saving chart at: {output_image}")
 
     history = []
@@ -31,33 +64,28 @@ if __name__ == "__main__":
         
     population = Population(pop_size, starting_board)
     
-    for gen in alive_it(range(max_generations), ):
+    for gen in alive_it(range(max_generations)):
     
-        ind1, ind2, avg_performance = population.select()
-        history.append(avg_performance)
-        
-        print(f"Current board: p={ind1.performance()}")
-        ind1.board.show()
+        selected_individuals = population.select(k,number_of_parents)
+
+        print(f"Best Individuals performances: {'; '.join([ f'ind{i+1}={individual.performance()}' for i,individual in enumerate(selected_individuals)])}")
+
+        for individual in selected_individuals:
+            if individual.found_solution():
+                solution_ind = individual
+                break
+
+        chromosomes = [individual.chromosome for individual in selected_individuals]
+        children = crossover(chromosomes, crossover_rate)
+        population.new_generation(children, mutation_rate, immigration_rate)
     
-        if(ind1.found_solution()):
-            solution_ind = ind1
-            break
-    
-        if(ind2.found_solution()):
-            solution_ind = ind2
-            break
-        
-    
-        chromossome = population.crossover(ind1.chromossome, ind2.chromossome)
-        population.new_generation(chromossome)
-    
-    plt.plot(list(range(len((history)))), history)
+    """plt.plot(list(range(len((history)))), history)
     plt.grid()
     plt.title("Progress of average duplicated values (less is better)")
     plt.xticks(rotation=45)
     plt.xlabel("generation")
     plt.ylabel("score")
     plt.savefig(output_image,bbox_inches="tight")
-    plt.show()
+    plt.show()"""
 
     

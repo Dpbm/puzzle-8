@@ -60,6 +60,18 @@ class Board:
         return np.array(values, dtype=np.uint8)
 
     def _randomize_board(self):
+        self._board = np.array([
+            [8, 0, 6, 0, 0, 0, 1, 0, 7],
+            [0, 0, 0, 6, 0, 2, 0, 0, 0],
+            [0, 5, 3, 0, 0, 4, 8, 0, 6],
+            [7, 0, 4, 8, 0, 0, 6, 3, 0],
+            [0, 0, 0, 0, 0, 0, 0, 9, 0],
+            [1, 0, 0, 5, 0, 0, 4, 0, 0],
+            [0, 0, 1, 2, 0, 0, 7, 0, 9],
+            [2, 0, 0, 0, 9, 6, 0, 0, 0],
+            [0, 7, 0, 0, 1, 0, 0, 8, 0],
+        ], dtype=np.uint8)
+        return
         for row in range(self._n):
             total_in_row = 0
             for column in range(self._n):

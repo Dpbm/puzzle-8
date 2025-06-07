@@ -1,80 +1,87 @@
+"""Handle Population."""
+
+from typing import List
 from copy import deepcopy
 import random
-import numpy as np
 
-from constants import DEFAULT_BOARD_SIZE
 from game.board import Board
 from genetic.individual import Individual
-from genetic.chromossome import Chromossome
+from genetic.chromosome import Chromosome
+
+SelectedIndividuals = List[Individual]
+TournamentSelected = List[Individual]
+Children = List[Chromosome]
 
 class Population:
+    """
+    Setup methods for managing and evolving
+    the population.
+    """
     def __init__(self, amount:int, board:Board):
         self._total_individuals = amount
-        self._worst_fitness = (DEFAULT_BOARD_SIZE**2) * 3
         self._individuals = [Individual(deepcopy(board)) for _ in range(amount)]
 
-    def select(self):
-        performances = []
-        # inverse_performances = np.zeros(shape=(self._total_individuals), dtype=np.uint16)
+    @staticmethod
+    def run_tournament(selected_individuals:TournamentSelected) -> Individual:
+        """
+        Run the tournament between some selected individuals
+        and get the one who performed better.
+        """
+        performances = [individual.performance() for individual in selected_individuals]
+        best_performance = min(performances)
+        best_individual_index = performances.index(best_performance)
+        return selected_individuals[best_individual_index]
 
-        for i,individual in enumerate(self._individuals):
-            performance = individual.performance()
-            performances.append(performance)
-            # inverse_performances[i] = np.abs( self._worst_fitness - performance )
+    def _generate_tournament(self, k:int, n:int) -> List[TournamentSelected]:
+        """
+        Return a list of tournaments to be done.
+        """
 
-        # probabilities = inverse_performances / np.sum(inverse_performances)
-        # roulette = np.zeros(shape=(self._total_individuals), dtype=np.float32)
-        #
-        # for i,prob in enumerate(probabilities):
-        #     if i == 0:
-        #         roulette[i] = prob
-        #         continue
-        #
-        #     roulette[i] = roulette[i-1]+prob
-        # 
-        # roulette_positions = [random.random() for _ in range(2)]
-        # parents = []
-        #
-        # for pos in roulette_positions:
-        #     for i,val in enumerate(roulette):
-        #         if val < pos:
-        #             continue
-        #         parents.append(self._individuals[0 if i == 0 else i-1])
-        #         break
 
-        i1 = performances.index(min(performances))
-        performances[i1] = 10000
-        i2 = performances.index(min(performances))
+        # TODO: We could add a safeguard here, to ensure
+        # the amount of available_to_select individuals never runs out of
+        # to be chosen based on `n`. But for now, it's good
+        available_to_select = list(range(self._total_individuals))
+        tournaments = []
 
-        parents = [
-            self._individuals[i1], self._individuals[i2]
-        ]
+        for i in range(n):
+            selected = random.sample(available_to_select, k)
+            available_to_select = list(set(available_to_select).difference(selected))
+            tournaments.append([self._individuals[index] for index in selected])
 
-        avg_performance = sum(performances)/self._total_individuals
+        return tournaments
 
-        return parents[0], parents[1], avg_performance
+    def select(self, k:int, number_of_parents:int) -> SelectedIndividuals:
+        """
+        Select best individuals based on a tournament.
+        """
+        tournaments = self._generate_tournament(k,number_of_parents)
+        best_individuals = [ Population.run_tournament(tournament) for tournament in tournaments ]
 
-    def crossover(self, ind1:Chromossome, ind2:Chromossome) -> Chromossome:
-        ch_size = ind1.size
-        # percentage = random.uniform(0.1, 0.6)
-        percentage = 0.4
-        cut_position = int(percentage * ch_size)
+        return best_individuals
 
-        first_part = ind1.slice(0, cut_position)
-        second_part = ind2.slice(cut_position,ch_size)
-
-        new_ch = Chromossome(ch_size)
-        new_ch.set_genes([*first_part, *second_part])
-
-        return new_ch
     
-    def new_generation(self, base_chromossome:Chromossome):
+    def new_generation(self, children:Children, mutation_rate:float, immigration_rate:float):
+        """
+        Restart population with new individuals (chromosomes actually)
+        """
+
+        # TODO: it's a good idea to check the amount of children
+        # but for this test it's OK to let as it is right now
+
+        #for i,child in enumerate(children):
+            #self._individuals[i].set_chromosome(deepcopy(child))
+
         for ind in self._individuals:
-            ind_chromossome = deepcopy(base_chromossome)
-            ind_chromossome.mutate()
-            ind.set_chromossome(ind_chromossome)
-            ind.setup_board()
+
+            if random.random() > immigration_rate:
+                # add a random new individual
+                continue
+
+            chosen_chromosome = deepcopy(random.choice(children))
+            chosen_chromosome.mutate(mutation_rate)
+            ind.set_chromosome(chosen_chromosome)
 
     def show(self):
        for ind in self._individuals:
-            print(ind.chromossome)
+            print(ind.chromosome)
