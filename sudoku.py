@@ -9,17 +9,17 @@ from constants import (
     DEFAULT_POPULATION_SIZE,
     DEFAULT_OUTPUT_IMAGE,
     DEFAULT_CROSSOVER_RATE,
-    DEFAULT_MUTATION_RATE, DEFAULT_K, DEFAULT_NUMBER_OF_PARENTS, DEFAULT_IMMIGRANT_RATE
+    DEFAULT_MUTATION_RATE,
+    DEFAULT_IMMIGRANT_RATE,
+    DEFAULT_MAX_RANDOM_PER_ROW
 )
 from game.board import Board
-from genetic.population import Population
+from genetic.population import Population, new_generation
 from genetic.chromosome import crossover
 
 def get_args() -> argparse.Namespace:
     """
     Parse CLI arguments.
-
-    :return: argparse.Namespace
     """
     parser = argparse.ArgumentParser()
     parser.add_argument("--population", type=int, default=DEFAULT_POPULATION_SIZE)
@@ -27,9 +27,8 @@ def get_args() -> argparse.Namespace:
     parser.add_argument("--out-image", type=str, default=DEFAULT_OUTPUT_IMAGE)
     parser.add_argument("--cross-rate", type=float, default=DEFAULT_CROSSOVER_RATE)
     parser.add_argument("--mut-rate", type=float, default=DEFAULT_MUTATION_RATE)
-    parser.add_argument("-k", type=int, default=DEFAULT_K)
-    parser.add_argument("--parents", type=int, default=DEFAULT_NUMBER_OF_PARENTS)
     parser.add_argument("--immigration", type=float, default=DEFAULT_IMMIGRANT_RATE)
+    parser.add_argument("--random-per-row", type=int, default=DEFAULT_MAX_RANDOM_PER_ROW)
     return parser.parse_args(sys.argv[1:])
 
 
@@ -41,18 +40,16 @@ if __name__ == "__main__":
     output_image = args.out_image
     crossover_rate = args.cross_rate
     mutation_rate = args.mut_rate
-    k = args.k
-    number_of_parents = args.parents
     immigration_rate = args.immigration
+    random_per_row = args.random_per_row
 
     print("Using:")
     print(f"Population size: {pop_size}")
     print(f"Max generations: {max_generations}")
     print(f"Crossover rate: {crossover_rate}")
     print(f"Mutation rate: {mutation_rate}")
-    print(f"K: {k}")
-    print(f"Number of parents: {number_of_parents}")
     print(f"Immigration rate: {immigration_rate}")
+    print(f"Total Random numbers per row: {random_per_row}")
     print(f"Saving chart at: {output_image}")
 
     history = []
@@ -60,25 +57,30 @@ if __name__ == "__main__":
         
     print("---Starting Board---")
     starting_board = Board()
+    starting_board.randomize_board(random_per_row)
     starting_board.show()
         
     population = Population(pop_size, starting_board)
     
     for gen in alive_it(range(max_generations)):
     
-        selected_individuals = population.select(k,number_of_parents)
+        ind1,ind2 = population.select()
 
-        print(f"Best Individuals performances: {'; '.join([ f'ind{i+1}={individual.performance()}' for i,individual in enumerate(selected_individuals)])}")
+        ind1.board.show()
+        print(f"Best Individuals performances: ind1={ind1.performance()}; ind2={ind2.performance()}")
 
-        for individual in selected_individuals:
-            if individual.found_solution():
-                solution_ind = individual
-                break
+        if ind1.found_solution():
+            solution_ind = ind1
+            break
 
-        chromosomes = [individual.chromosome for individual in selected_individuals]
-        children = crossover(chromosomes, crossover_rate)
-        population.new_generation(children, mutation_rate, immigration_rate)
-    
+        if ind2.found_solution():
+            solution_ind = ind2
+            break
+
+        child1, child2 = crossover(ind1.chromosome, ind2.chromosome, crossover_rate, starting_board)
+        population = new_generation(pop_size, starting_board, [child1,child2], mutation_rate, immigration_rate)
+
+
     """plt.plot(list(range(len((history)))), history)
     plt.grid()
     plt.title("Progress of average duplicated values (less is better)")
