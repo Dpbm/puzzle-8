@@ -104,11 +104,11 @@ class Board:
 
         self._save_empty_pos()
 
-    def total_duplicated_values(self):
+    def total_unique_values(self):
         total = 0
         for i in range(self._n):
-            total += self._n - len(np.unique(self._get_column(i))) # max is 9
-            total += self._n - len(np.unique(self._get_nth_square(i))) # max is 3
+            total += len(np.unique(self._get_column(i))) # max is 9
+            total += len(np.unique(self._get_nth_square(i))) # max is 3
         return total
     
     def setup_solution_board(self,values:List[List[int]]):
