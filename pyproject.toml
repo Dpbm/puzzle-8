@@ -7,4 +7,5 @@ dependencies = [
     "alive-progress>=3.2.0",
     "matplotlib>=3.10.3",
     "numpy>=2.2.6",
+    "pyqt5>=5.15.11",
 ]

@@ -98,7 +98,7 @@ class Board:
         for dr, dc in moves_map:
             new_board = self.move((dr, dc))
             if new_board:
-                neighbors.append((new_board, moves_map[(dr, dc)]))
+                neighbors.append(new_board)
         return neighbors
 
     def is_solvable(self):
@@ -116,6 +116,21 @@ class Board:
                     inversions += 1
 
         return inversions % 2 == 0
+    
+    def plot_board(self):
+        plt.axis('off')
+
+        plt.imshow(self._board, cmap="winter")
+
+        for row,r_val in enumerate(self._board):
+            for col,c_val in enumerate(r_val):
+                plt.text(col, row, str(c_val), ha='center', va='center', color='white', fontsize=14)
+    
+    def save_board(self,label):
+        self.plot_board()
+        plt.savefig(f"{label}.png",bbox_inches="tight")
+
+
 
 
 class InvalidBoard(Exception):
@@ -126,10 +141,11 @@ class InvalidBoard(Exception):
 class Solver:
 
     @staticmethod
-    def solve_hill_climbing(board,max_iter,max_restart):
+    def solve_hill_climbing(board,max_iter,max_restart,history):
         if not board.is_solvable():
             raise InvalidBoard()
 
+        total_i = 0
         for r in range(max_restart):
             print(f"r={r}")
 
@@ -138,12 +154,15 @@ class Solver:
             path = [current_board]
 
             for i in alive_it(range(max_iter)):
+                total_i += 1
+                history.append(best_cost)
+
                 if best_cost == 0:
                     return path
 
                 neighbors = current_board.neighbors()
                 improving_neighbors = []
-                for neighbor_board, move_desc in neighbors:
+                for neighbor_board in neighbors:
                     neighbor_cost = neighbor_board.distance()
                     if neighbor_cost < best_cost:
                         improving_neighbors.append((neighbor_board, neighbor_cost))
@@ -168,46 +187,78 @@ class Solver:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--max-iter", type=int, default=1_000_000)
-    parser.add_argument("--max-restart", type=int, default=100)
+    parser.add_argument("--max-restart", type=int, default=1000)
     args = parser.parse_args(sys.argv[1:])
 
-    b = Board([
-        [1, 2, 3],
-        [0, 4, 6],
-        [7, 5, 8]
-    ])
-    b.show()
+    tests = [
+        (
+            "easy",
+            [
+                [1, 2, 3],
+                [4, 5, 6],
+                [7, 0, 8]
+            ]
+        ),
+        (
+            "medium",
+            [
+                [1, 2, 3],
+                [0, 4, 6],
+                [7, 5, 8]
+            ]
 
-    solution = Solver.solve_hill_climbing(b,args.max_iter, args.max_restart)
+        ),
+        (
+            "hard",
+            [
+                [2, 8, 3],
+                [1, 6, 4],
+                [7, 0, 5]
+            ]
+            
+        )
+    ]
 
-    if solution is None:
-        print("No solution was found!")
-        exit()
+    for label,board in tests:
 
-    sol_size= len(solution)
-    rows = ceil(sol_size/3)
-    cols = 3 if sol_size >= 3 else sol_size
-    step = 0
+        b = Board(board)
+        b.save_board(label)
+        plt.close('all')
 
-    for i in range(rows):
-        for j in range(cols):
-            if(step > sol_size-1):
-                break
+        history = []
+        solution = None
+        try:
+            solution = Solver.solve_hill_climbing(b,args.max_iter, args.max_restart,history)
+        except:
+            print("Failed!")
 
-            plt.subplot(rows,cols,step+1)
-            plt.axis('off')
+        if solution is None:
+            print("No solution was found!")
+            exit()
 
-            board = solution[step].board
-            plt.imshow(board, cmap="winter")
+        sol_size= len(solution)
+        rows = ceil(sol_size/3)
+        cols = 3 if sol_size >= 3 else sol_size
+        step = 0
 
-            for row,r_val in enumerate(board):
-                for col,c_val in enumerate(r_val):
-                    plt.text(col, row, str(c_val), ha='center', va='center', color='white', fontsize=14)
+        plt.plot(list(range(len(history))), history)
+        plt.xlabel("iterations")
+        plt.ylabel("cost")
+        plt.title("Evolution")
+        plt.savefig(f"evolution_{label}.png", bbox_inches="tight")
+        plt.close('all')
 
 
-            step += 1
-    plt.savefig("solution.png",bbox_inches="tight")
-    plt.show()
+        for i in range(rows):
+            for j in range(cols):
+                if(step > sol_size-1):
+                    break
 
+                plt.subplot(rows,cols,step+1)
+                solution[step].plot_board()
+
+                step += 1
+        plt.savefig(f"solution_{label}.png",bbox_inches="tight")
+        plt.close('all')
 
 
