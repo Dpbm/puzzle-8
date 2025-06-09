@@ -145,6 +145,9 @@ class Solver:
         if not board.is_solvable():
             raise InvalidBoard()
 
+        best_cost_overall_restarts = 1_000_000
+        best_path_overall_restarts = []
+
         total_i = 0
         for r in range(max_restart):
             print(f"r={r}")
@@ -178,9 +181,12 @@ class Solver:
                     break
 
                 print(f"i={i}; best_cost={best_cost}")
-            path[-1].show()
+            
+            if(best_cost < best_cost_overall_restarts):
+                best_cost_overall_restarts = best_cost
+                best_path_overall_restarts = path
 
-        return None
+        return best_path_overall_restarts
 
 
 
@@ -232,9 +238,6 @@ if __name__ == "__main__":
         except:
             print("Failed!")
 
-        if solution is None:
-            print("No solution was found!")
-            exit()
 
         sol_size= len(solution)
         rows = ceil(sol_size/3)
