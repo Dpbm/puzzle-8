@@ -1,9 +1,0 @@
-"""
-Constants for the algorithms and the program itself.
-"""
-
-DEFAULT_MAX_ITERATIONS = 1_000_000
-MIN_VALUE_PER_CELL = 1
-MAX_VALUE_PER_CELL = 9
-DEFAULT_BOARD_SIZE = 9
-DEFAULT_MAX_RANDOM_PER_ROW = 4
