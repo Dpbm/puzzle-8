@@ -22,7 +22,7 @@ class Board:
     """Board Structure."""
     def __init__(self, n:int=DEFAULT_BOARD_SIZE):
         self._n = n
-        self._side = sqrt(self._n)
+        self._side = int(sqrt(self._n))
 
         self._board = np.zeros(shape=(self._n, self._n), dtype=np.uint8)
 
@@ -64,12 +64,15 @@ class Board:
         return np.array(values, dtype=np.uint8)
 
     def _get_nth_square(self, n:int) -> Square:
-        values = []
+        """values = []
         for row in range(self._n):
             for column in range(self._n):
                 if self._get_square_pos(row) == n and self._get_square_pos(column) == n:
                     values.append(self._board[row, column])
-        return np.array(values, dtype=np.uint8)
+        return np.array(values, dtype=np.uint8)"""
+        row = self._get_square_pos(n)*3
+        column = (n%3)*3
+        return self._board[row:row+3, column:column+3]
 
     def randomize_board(self, max_random_per_row:int):
         """
