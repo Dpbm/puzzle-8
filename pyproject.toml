@@ -1,7 +1,7 @@
 [project]
-name = "sudoku"
+name = "puzzle-8"
 version = "0.1.0"
-description = "sudoku AI"
+description = "Puzzle-8 AI"
 requires-python = ">=3.12"
 dependencies = [
     "alive-progress>=3.2.0",

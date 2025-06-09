@@ -1,288 +1,213 @@
+import argparse
 import random
+import sys
+from copy import deepcopy
+from alive_progress import alive_it
+import matplotlib.pyplot as plt
+from math import ceil
+
+class Board:
+    def __init__(self, b=None):
+        self._target_positions = [
+            (i,j)
+            for i in range(3)
+            for j in range(3)
+            if i+j != 4
+        ]
+        self._target = [
+                    [1, 2, 3],
+                    [4, 5, 6],
+                    [7, 8, 0]
+                ]
+        self._board = b
+
+        if b is None:
+            self._board = []
+            self._generate_board()
+
+    @property
+    def board(self):
+        return self._board
+
+    @classmethod
+    def new_board(cls, board_matrix):
+        return cls(board_matrix)
+
+    def _generate_board(self):
+        self._board = deepcopy(self._target)
+
+        while True:
+
+            values = list(range(0,9))
+            random.shuffle(values)
+            new_board = []
+            for _ in range(3):
+                new_board.append([])
+                for __ in range(3):
+                    new_board[_].append(values.pop(0))
+
+            self._board = new_board
+
+            if self.is_solvable():
+                break
 
 
-GOAL_BOARD = [
-    [1, 2, 3],
-    [4, 5, 6],
-    [7, 8, 0]
-]
+    def show(self):
+        for row in self._board:
+            print(" ".join(map(str, row)))
 
+    def empty_position(self):
+        for r in range(3):
+            for c in range(3):
+                if self._board[r][c] == 0:
+                    return r, c
+        return -1, -1
 
-def print_board(board):
-    for row in board:
-        print(" ".join(map(str, row)))
+    def move(self, movement):
+        br, bc = self.empty_position()
+        new_board = deepcopy(self._board)
 
+        dr, dc = movement
+        target_r, target_c = br + dr, bc + dc
 
-def get_blank_position(board):
-    for r in range(3):
-        for c in range(3):
-            if board[r][c] == 0:
-                return r, c
-    return -1, -1
-
-
-def apply_move(board, move_delta):
-    """
-    Applies a move (dr, dc) to the board.
-    Returns the new board or None if the move is invalid.
-    move_delta is a tuple (dr, dc)
-    """
-    br, bc = get_blank_position(board)
-    new_board = [row[:] for row in board]  # Deep copy
-
-    dr, dc = move_delta
-    target_r, target_c = br + dr, bc + dc
-
-    if 0 <= target_r < 3 and 0 <= target_c < 3:
-        new_board[br][bc], new_board[target_r][target_c] = \
-            new_board[target_r][target_c], new_board[br][bc]
-        return new_board
-    return None  # Move is out of bounds
-
-
-def get_manhattan_distance(board):
-    """
-    Calculates the Manhattan distance heuristic for a given board from the GOAL_BOARD.
-    """
-    distance = 0
-    for r_current in range(3):
-        for c_current in range(3):
-            tile = board[r_current][c_current]
-            if tile == 0:
-                continue  # Ignore blank tile
-
-            # Calculate target row and column for the tile
-            # Assuming target is 1-8 in order, then 0 at (2,2)
-            r_target, c_target = 0, 0
-            if tile == 1:
-                r_target, c_target = 0, 0
-            elif tile == 2:
-                r_target, c_target = 0, 1
-            elif tile == 3:
-                r_target, c_target = 0, 2
-            elif tile == 4:
-                r_target, c_target = 1, 0
-            elif tile == 5:
-                r_target, c_target = 1, 1
-            elif tile == 6:
-                r_target, c_target = 1, 2
-            elif tile == 7:
-                r_target, c_target = 2, 0
-            elif tile == 8:
-                r_target, c_target = 2, 1
-
-            distance += abs(r_current - r_target) + abs(c_current - c_target)
-    return distance
-
-
-def get_neighbors(board):
-    """
-    Generates all possible next board configurations by sliding the blank tile.
-    Returns a list of (new_board, move_description) tuples.
-    """
-    neighbors = []
-    br, bc = get_blank_position(board)
-
-    # Possible moves: (dr, dc)
-    moves_map = {
-        (-1, 0): "Up",
-        (1, 0): "Down",
-        (0, -1): "Left",
-        (0, 1): "Right"
-    }
-
-    for dr, dc in moves_map:
-        new_board = apply_move(board, (dr, dc))
-        if new_board:
-            neighbors.append((new_board, moves_map[(dr, dc)]))
-    return neighbors
-
-
-def is_solvable(board):
-    """
-    Checks if an 8-puzzle configuration is solvable.
-    (Same as in A* solver)
-    """
-    flat_board = []
-    for row in board:
-        for tile in row:
-            if tile != 0:
-                flat_board.append(tile)
-
-    inversions = 0
-    n = len(flat_board)
-    for i in range(n):
-        for j in range(i + 1, n):
-            if flat_board[i] > flat_board[j]:
-                inversions += 1
-
-    return inversions % 2 == 0
-
-
-# --- Stochastic Hill Climbing Solver ---
-
-def solve_8_puzzle_stochastic_hill_climbing(initial_board, max_iterations=100000, max_restarts=10):
-    if not is_solvable(initial_board):
-        print("The initial puzzle configuration is not solvable.")
+        if 0 <= target_r < 3 and 0 <= target_c < 3:
+            new_board[br][bc], new_board[target_r][target_c] = new_board[target_r][target_c], new_board[br][bc]
+            return Board.new_board(new_board)
         return None
 
-    best_overall_board = None
-    min_overall_cost = float('inf')
-    best_overall_path = []
+    def distance(self):
+        d = 0
+        for r_current in range(3):
+            for c_current in range(3):
+                tile = self._board[r_current][c_current]
+                if tile == 0:
+                    continue
+                r_target, c_target = self._target_positions[tile-1]
+                d += abs(r_current - r_target) + abs(c_current - c_target)
+        return d
 
-    for restart_attempt in range(max_restarts):
-        print(f"\nRestart Attempt {restart_attempt + 1}/{max_restarts}")
-        current_board = [row[:] for row in initial_board]
-        current_cost = get_manhattan_distance(current_board)
-        current_path = [(initial_board, "Initial State")]
+    def neighbors(self):
+        neighbors = []
+        moves_map = {
+            (-1, 0): "Up",
+            (1, 0): "Down",
+            (0, -1): "Left",
+            (0, 1): "Right"
+        }
 
-        print(f"Initial Cost for this attempt: {current_cost}")
+        for dr, dc in moves_map:
+            new_board = self.move((dr, dc))
+            if new_board:
+                neighbors.append((new_board, moves_map[(dr, dc)]))
+        return neighbors
 
-        for iteration in range(max_iterations):
-            if current_cost == 0:
-                print(f"Solution found in {iteration} iterations!")
-                if current_cost < min_overall_cost:
-                    best_overall_board = current_board
-                    min_overall_cost = current_cost
-                    best_overall_path = current_path
-                return best_overall_path  # Return the path if a solution is found
+    def is_solvable(self):
+        flat_board = [ tile
+                       for row in self._board
+                       for tile in row
+                       if tile != 0
+                       ]
 
-            neighbors = get_neighbors(current_board)
+        inversions = 0
+        n = len(flat_board)
+        for i in range(n):
+            for j in range(i + 1, n):
+                if flat_board[i] > flat_board[j]:
+                    inversions += 1
 
-            # Filter for neighbors that improve the cost
-            improving_neighbors = []
-            for neighbor_board, move_desc in neighbors:
-                neighbor_cost = get_manhattan_distance(neighbor_board)
-                if neighbor_cost < current_cost:
-                    improving_neighbors.append((neighbor_board, move_desc, neighbor_cost))
+        return inversions % 2 == 0
 
-            if improving_neighbors:
-                # Choose a random neighbor from the improving ones
-                chosen_neighbor_board, chosen_move_desc, chosen_cost = random.choice(improving_neighbors)
 
-                current_board = chosen_neighbor_board
-                current_cost = chosen_cost
-                current_path.append((current_board, chosen_move_desc))
-            else:
-                # No strictly improving neighbors found (stuck in local optimum or plateau)
-                # Option 1: Break and restart (this is handled by the outer loop)
-                # Option 2: Random walk (take a random move, even if it doesn't improve)
-                # This implementation breaks and relies on restarts for global search.
-                # To implement a random walk, you'd choose a random neighbor from ALL neighbors here.
-                break  # Stuck in local optimum, break current climb and restart
+class InvalidBoard(Exception):
+    def __init__(self):
+        self.message = "Invalid board. This board is not solvable!"
+        super().__init__(self.message)
 
-            if iteration % 10000 == 0:
-                print(f"  Iteration {iteration}: Current Cost = {current_cost}")
+class Solver:
 
-        # After an attempt, check if we found a better overall state
-        if current_cost < min_overall_cost:
-            best_overall_board = current_board
-            min_overall_cost = current_cost
-            best_overall_path = current_path
+    @staticmethod
+    def solve_hill_climbing(board,max_iter,max_restart):
+        if not board.is_solvable():
+            raise InvalidBoard()
 
-        print(f"Attempt finished with cost: {current_cost}")
+        for r in range(max_restart):
+            print(f"r={r}")
 
-    print(f"\nMax restarts ({max_restarts}) reached. Best board found overall:")
-    if best_overall_board:
-        print_board(best_overall_board)
-        print(f"Final Manhattan distance: {min_overall_cost}")
-        return best_overall_path
-    else:
-        print("Could not find any solution.")
+            current_board = deepcopy(board)
+            best_cost = current_board.distance()
+            path = [current_board]
+
+            for i in alive_it(range(max_iter)):
+                if best_cost == 0:
+                    return path
+
+                neighbors = current_board.neighbors()
+                improving_neighbors = []
+                for neighbor_board, move_desc in neighbors:
+                    neighbor_cost = neighbor_board.distance()
+                    if neighbor_cost < best_cost:
+                        improving_neighbors.append((neighbor_board, neighbor_cost))
+
+                if improving_neighbors:
+                    chosen_neighbor_board, chosen_cost = random.choice(improving_neighbors)
+
+                    current_board = deepcopy(chosen_neighbor_board)
+                    best_cost = chosen_cost
+                    path.append(current_board)
+                else:
+                    # no solution was found, try again
+                    break
+
+                print(f"i={i}; best_cost={best_cost}")
+            path[-1].show()
+
         return None
 
 
-def print_solution_path(path):
-    if not path:
-        print("No solution path to display.")
-        return
 
-    print("\nSolution Path (Stochastic Hill Climbing):")
-    for i, (board, action) in enumerate(path):
-        print(f"\nStep {i}: {action}")
-        print_board(board)
-
-
-# --- Main Execution ---
 if __name__ == "__main__":
-    # Example initial puzzle configurations
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--max-iter", type=int, default=1_000_000)
+    parser.add_argument("--max-restart", type=int, default=100)
+    args = parser.parse_args(sys.argv[1:])
 
-    # Solvable example (relatively easy for SHC)
-    initial_puzzle_easy = [
-        [1, 2, 3],
-        [4, 5, 6],
-        [7, 0, 8]
-    ]
-
-    # A slightly harder solvable example
-    initial_puzzle_medium = [
+    b = Board([
         [1, 2, 3],
         [0, 4, 6],
         [7, 5, 8]
-    ]
+    ])
+    b.show()
 
-    # A harder solvable example
-    initial_puzzle_hard = [
-        [2, 8, 3],
-        [1, 6, 4],
-        [7, 0, 5]
-    ]
+    solution = Solver.solve_hill_climbing(b,args.max_iter, args.max_restart)
 
-    # Unsolvable example (has an odd number of inversions)
-    initial_puzzle_unsolvable = [
-        [1, 2, 3],
-        [4, 5, 6],
-        [8, 7, 0]  # 8 and 7 are inverted
-    ]
+    if solution is None:
+        print("No solution was found!")
+        exit()
 
-    print("Solving Easy Puzzle:")
-    print("Initial Board:")
-    print_board(initial_puzzle_easy)
-    print("\nGoal Board:")
-    print_board(GOAL_BOARD)
-    print("-" * 30)
+    sol_size= len(solution)
+    rows = ceil(sol_size/3)
+    cols = 3 if sol_size >= 3 else sol_size
+    step = 0
 
-    solution_path_easy = solve_8_puzzle_stochastic_hill_climbing(initial_puzzle_easy, max_iterations=5000,
-                                                                 max_restarts=5)
-    print_solution_path(solution_path_easy)
+    for i in range(rows):
+        for j in range(cols):
+            if(step > sol_size-1):
+                break
 
-    print("\n" + "=" * 30 + "\n")
+            plt.subplot(rows,cols,step+1)
+            plt.axis('off')
 
-    print("Solving Medium Puzzle:")
-    print("Initial Board:")
-    print_board(initial_puzzle_medium)
-    print("\nGoal Board:")
-    print_board(GOAL_BOARD)
-    print("-" * 30)
+            board = solution[step].board
+            plt.imshow(board, cmap="winter")
 
-    solution_path_medium = solve_8_puzzle_stochastic_hill_climbing(initial_puzzle_medium, max_iterations=50000,
-                                                                   max_restarts=10)
-    print_solution_path(solution_path_medium)
+            for row,r_val in enumerate(board):
+                for col,c_val in enumerate(r_val):
+                    plt.text(col, row, str(c_val), ha='center', va='center', color='white', fontsize=14)
 
-    print("\n" + "=" * 30 + "\n")
 
-    print("Solving Hard Puzzle:")
-    print("Initial Board:")
-    print_board(initial_puzzle_hard)
-    print("\nGoal Board:")
-    print_board(GOAL_BOARD)
-    print("-" * 30)
+            step += 1
+    plt.savefig("solution.png",bbox_inches="tight")
+    plt.show()
 
-    # Stochastic Hill Climbing with restarts might need many iterations/restarts for harder puzzles.
-    # It's not guaranteed to find the optimal path or even a solution.
-    solution_path_hard = solve_8_puzzle_stochastic_hill_climbing(initial_puzzle_hard, max_iterations=200000,
-                                                                 max_restarts=20)
-    print_solution_path(solution_path_hard)
 
-    print("\n" + "=" * 30 + "\n")
 
-    print("Solving Unsolvable Puzzle:")
-    print("Initial Board:")
-    print_board(initial_puzzle_unsolvable)
-    print("\nGoal Board:")
-    print_board(GOAL_BOARD)
-    print("-" * 30)
-
-    solution_path_unsolvable = solve_8_puzzle_stochastic_hill_climbing(initial_puzzle_unsolvable, max_iterations=1000,
-                                                                       max_restarts=1)
-    print_solution_path(solution_path_unsolvable)
